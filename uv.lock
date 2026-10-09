@@ -425,6 +425,7 @@ dependencies = [
     { name = "openai" },
     { name = "pick" },
     { name = "pydantic-settings" },
+    { name = "pygments" },
     { name = "python-dotenv" },
     { name = "pytz" },
     { name = "pyyaml" },
@@ -487,6 +488,7 @@ requires-dist = [
     { name = "pick", specifier = "==2.6.0" },
     { name = "pyarrow", marker = "extra == 'hf'", specifier = ">=17.0.0" },
     { name = "pydantic-settings", specifier = ">=2.0" },
+    { name = "pygments", specifier = ">=2.19" },
     { name = "python-dotenv", specifier = "==1.2.2" },
     { name = "pytz", specifier = ">=2025.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -898,8 +900,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [
@@ -3324,7 +3326,7 @@ name = "zipfile-zstd"
 version = "0.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zstandard" },
+    { name = "zstandard", marker = "python_full_version < '3.14'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f7/2a/2e0941bc0058d10ab37d8c578b94a19f611f6ae54f124140f2fb451f0932/zipfile-zstd-0.0.4.tar.gz", hash = "sha256:c1498e15b7922a3d1af0ea55df8b11b2af4e8f7e0e80e414e25d66899f7def89", size = 4603, upload-time = "2021-12-08T07:38:16.245Z" }
 wheels = [

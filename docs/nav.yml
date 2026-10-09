@@ -14,6 +14,7 @@ tabs:
         pages:
           - running-evals
           - control-evals
+          - multi-agent
       - title: Monitoring
         pages:
           - monitoring
@@ -21,6 +22,7 @@ tabs:
         pages:
           - trajectories
           - web-viewer
+          - rendering-evals
       - title: Measuring Safety and Usefulness
         pages:
           - safety-curves
