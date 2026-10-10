@@ -1,5 +1,7 @@
 checklist:
   monitor: control_tower.monitors.checklist:checklist
+ct-swe-strong-v1:
+  monitor: control_tower.monitors.ct_swe_strong_v1:ct_swe_strong_v1
 three-scores:
   monitor: control_tower.monitors.three_scores:three_scores
 single-goal:
