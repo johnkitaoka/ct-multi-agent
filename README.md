@@ -6,14 +6,14 @@ Welcome to Control Tower, a framework for AI control evaluations built on [Inspe
 
 Control Tower provides many built-in components, including blue-team protocols, action- and trajectory-level monitors, control evaluations, safety-usefulness curves, and trajectory tooling. Environments and their main and side tasks come from separate settings repositories, and extensions (new protocols, policies, monitors, and scorers) can be provided by other Python packages.
 
-This fork adds a [multi-agent Inspect solver](docs/multi-agent.md) for shared-sandbox task runs and an [offline HTML transcript renderer](docs/rendering-evals.md). The multi-agent solver is currently used through the Python task API; it is not yet a `ct run eval` protocol.
+This fork adds [multi-agent execution](docs/multi-agent.md) in a shared sandbox through both the Python task API and the `ct run eval --harness roster` red/blue game, plus an [offline HTML transcript renderer](docs/rendering-evals.md). Completed team trajectories can be scored with `ct run monitor --view per-agent` or `--view joint`; the roster harness does not yet support live blocking, auditing, or stepwise monitoring.
 
 See the [documentation](https://docs.linuxarena.ai) for an overview of Control Tower, a hands-on evaluation walkthrough, and development guides.
 
 To get started:
 
 ```bash
-git clone https://github.com/linuxarena/control-tower && cd control-tower
+git clone https://github.com/johnkitaoka/ct-multi-agent.git && cd ct-multi-agent
 uv sync
 alias ct='uv run ct'        # add to your shell profile to keep it
 cp .env.example .env          # set ANTHROPIC_API_KEY (or OPENAI_API_KEY)
