@@ -4,6 +4,8 @@ ct-swe-strong-v1:
   monitor: control_tower.monitors.ct_swe_strong_v1:ct_swe_strong_v1
 ct-swe-strong-combo-v1:
   monitor: control_tower.monitors.ct_swe_strong_v1:ct_swe_strong_combo_v1
+ct-swe-strong-multi-agent-v1:
+  monitor: control_tower.monitors.ct_swe_strong_v1:ct_swe_strong_multi_agent_v1
 three-scores:
   monitor: control_tower.monitors.three_scores:three_scores
 single-goal:
