@@ -22,6 +22,8 @@ uv run python examples/multi-agent/minilab.py --with-side --out-dir /tmp/minilab
 
 For model-driven runs, use `ct run eval --harness roster`. Completed team logs can be scored with `ct run monitor --view per-agent` or `--view joint`. The [multi-agent guide](docs/multi-agent.md) documents the commands, monitor presets, and current limits. The roster harness does not yet support live blocking, auditing, or stepwise monitoring; the current team monitor input also differs from the historical experiment.
 
+Repository canary string: `CTMA-94838e0c6667d9c4743c2ca4`.
+
 See the [documentation](https://docs.linuxarena.ai) for an overview of Control Tower, a hands-on evaluation walkthrough, and development guides.
 
 To get started:
