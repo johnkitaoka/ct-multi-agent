@@ -10,15 +10,16 @@ Control Tower provides many built-in components, including blue-team protocols, 
 
 This fork adds a roster harness that runs several agents in one shared sandbox. Each worker has its own main task, conversation, policy instance, and Linux account; Control Tower grades the shared result with the setting's main- and side-task scorers. It also adds an offline HTML transcript renderer.
 
-For a model-free MiniLab example that writes an Inspect recording and HTML transcript:
+For a model-free multi-agent example that writes an Inspect `.eval` recording and HTML transcript, run with Docker available:
 
 ```bash
-git clone --recurse-submodules https://github.com/johnkitaoka/minilab.git
-cd minilab/control-tower
+git clone https://github.com/johnkitaoka/ct-multi-agent.git
+cd ct-multi-agent
 uv sync --locked --dev
-uv run ct settings pull ../minilab
-uv run python examples/multi-agent/minilab.py --with-side --out-dir /tmp/minilab-example
+uv run python examples/multi-agent/run.py --out-dir /tmp/ct-parallel-demo
 ```
+
+The example runs two scripted workers in a shared sandbox and makes no model calls.
 
 For model-driven runs, use `ct run eval --harness roster`. Completed team logs can be scored with `ct run monitor --view per-agent` or `--view joint`. The [multi-agent guide](docs/multi-agent.md) documents the commands, monitor presets, and current limits. The roster harness does not yet support live blocking, auditing, or stepwise monitoring; the current team monitor input also differs from the historical experiment.
 
