@@ -29,6 +29,7 @@ from control_tower.eval_logs.seat import (
     seat_turns,
     untrusted_conversation,
 )
+from control_tower.eval_logs.team_monitor import team_trajectories
 from control_tower.models.model_spec import hawk_gateway_active
 from control_tower.models.role_model import make_role_model
 from control_tower.models.roles import UNTRUSTED_ROLE
@@ -50,15 +51,22 @@ from control_tower.trajectories.monitor_score import TRAJECTORY
 from control_tower.utils.errors import OperationError, ValidationError
 
 Kind = Literal["action", "trajectory"]
+View = Literal["standard", "per-agent", "joint"]
 
 
 @scorer(metrics=[], name=MONITOR_SCORE)
-def monitor_scorer(monitors: Monitors | None = None, kind: Kind = "action") -> Scorer:
+def monitor_scorer(
+    monitors: Monitors | None = None,
+    kind: Kind = "action",
+    view: View = "standard",
+) -> Scorer:
     """The sample's monitor scores: every monitor's score on every action, with every score in
     metadata. `monitors` asks those over the finished run first, every action (`kind=action`) or
     the whole trajectory once, recording as a live protocol does."""
     # `inspect score -S` hands args through unvalidated, so the monitors are parsed here.
     asked = TypeAdapter(Monitors).validate_python(monitors) if monitors else []
+    if view != "standard" and kind != "trajectory":
+        raise ValidationError("team monitor views require kind=trajectory")
 
     async def score(state: TaskState, target: Target) -> Score:
         del target
@@ -66,11 +74,25 @@ def monitor_scorer(monitors: Monitors | None = None, kind: Kind = "action") -> S
             recorded = {
                 item["monitor"] for item in MonitorScores(store=state.store).items
             }
-            if taken := recorded & {m.name for m in asked}:
+            agent_ids = state.metadata.get("agent_ids") or []
+            if view != "standard" and not agent_ids:
+                raise ValidationError("team monitor views require a roster eval log")
+            scoped_names = (
+                {
+                    f"{monitor.name}@{agent_id}"
+                    for monitor in asked
+                    for agent_id in (agent_ids if view == "per-agent" else ["joint"])
+                }
+                if view != "standard"
+                else {monitor.name for monitor in asked}
+            )
+            if taken := recorded & scoped_names:
                 raise ValidationError(
                     f"monitor name(s) {sorted(taken)} already scored this log; pick another `name`"
                 )
             events = transcript().events
+            if view != "standard" and not seat_turns(events):
+                raise ValidationError("the roster log has no seated actions to monitor")
             if not seat_turns(events) and any(
                 isinstance(e, ModelEvent) and e.role == UNTRUSTED_ROLE for e in events
             ):
@@ -79,13 +101,47 @@ def monitor_scorer(monitors: Monitors | None = None, kind: Kind = "action") -> S
                     "so there is nothing to monitor"
                 )
             meta = SampleMetadata.model_validate(state.metadata)
-            view = BlueView(meta.environment, meta.main_tasks)
-            if kind == "trajectory":
+            blue_view = BlueView(meta.environment, meta.main_tasks)
+            if view != "standard":
+                per_agent, joint = team_trajectories(events, agent_ids)
+                assignments = state.metadata.get("agent_assignments") or {}
+                by_id = {task.id: task for task in meta.main_tasks}
+                if view == "per-agent":
+                    for agent_id in agent_ids:
+                        task_id = assignments.get(agent_id)
+                        if task_id not in by_id:
+                            raise ValidationError(
+                                f"roster worker {agent_id!r} has no assigned main task"
+                            )
+                        async with scope(f"monitor: worker {agent_id}"):
+                            await score_all(
+                                [
+                                    m.model_copy(
+                                        update={"name": f"{m.name}@{agent_id}"}
+                                    )
+                                    for m in asked
+                                ],
+                                per_agent[agent_id],
+                                BlueView(meta.environment, (by_id[task_id],)),
+                                trajectory=True,
+                            )
+                else:
+                    async with scope("monitor: joint team"):
+                        await score_all(
+                            [
+                                m.model_copy(update={"name": f"{m.name}@joint"})
+                                for m in asked
+                            ],
+                            joint,
+                            blue_view,
+                            trajectory=True,
+                        )
+            elif kind == "trajectory":
                 async with scope("monitor: trajectory"):
                     await score_all(
                         asked,
                         untrusted_conversation(transcript().events),
-                        view,
+                        blue_view,
                         trajectory=True,
                     )
             else:
@@ -94,7 +150,7 @@ def monitor_scorer(monitors: Monitors | None = None, kind: Kind = "action") -> S
                         await score_all(
                             asked,
                             prefix,
-                            view,
+                            blue_view,
                         )
         ran = [
             event.output.message.id for event, _ in action_views(transcript().events)

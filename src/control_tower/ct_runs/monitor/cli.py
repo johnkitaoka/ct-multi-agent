@@ -34,6 +34,13 @@ from control_tower.cli.base import handle_user_errors
     help="Score every action before it ran, or the whole trajectory once.",
 )
 @click.option(
+    "--view",
+    type=click.Choice(["standard", "per-agent", "joint"]),
+    default="standard",
+    show_default=True,
+    help="For a roster trajectory, score each worker separately or the timestamped joint team view.",
+)
+@click.option(
     "--model-role",
     "model_roles",
     multiple=True,
@@ -71,6 +78,7 @@ def run_monitor_cmd(
     source: str,
     monitors: str,
     kind: str,
+    view: str,
     model_roles: tuple[str, ...],
     save_dir: Path | None,
     upload: bool,
@@ -86,7 +94,7 @@ def run_monitor_cmd(
     from control_tower.ct_runs.monitor.task import run_eval_monitor
     from control_tower.eval_logs.io import check_eval_log_credentials
     from control_tower.protocols.eval.monitoring.monitor import Monitors
-    from control_tower.protocols.eval.monitoring.posthoc import Kind  # noqa: F401
+    from control_tower.protocols.eval.monitoring.posthoc import Kind, View  # noqa: F401
     from control_tower.utils.cli_args import parse_key_value_args
 
     try:
@@ -108,6 +116,12 @@ def run_monitor_cmd(
 
     if upload:
         check_eval_log_credentials()
+    if view != "standard" and kind != "trajectory":
+        raise click.UsageError("team monitor views require --kind trajectory")
+    if view != "standard" and hawk:
+        raise click.UsageError(
+            "team monitor views currently require local scoring, without --hawk"
+        )
     scan = None
     if hawk:
         from control_tower.eval_logs.io import HAWK_SCHEME
@@ -135,6 +149,7 @@ def run_monitor_cmd(
         source,
         monitors=asked,
         kind=cast("Kind", kind),
+        view=cast("View", view),
         model_roles=roles,
         save_dir=save_dir,
         scan=scan,

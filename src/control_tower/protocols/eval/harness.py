@@ -47,7 +47,27 @@ class InspectSweHarness(BaseModel):
     args: dict[str, Any] = {}
 
 
-Harness = Annotated[NullHarness | InspectSweHarness, Field(discriminator="kind")]
+class RosterWorker(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
+
+    agent_id: str = Field(min_length=1)
+    main_task_id: str
+    user: str = Field(min_length=1)
+    max_steps: int | None = Field(default=None, ge=1)
+
+
+class RosterHarness(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["roster"] = "roster"
+    workers: list[RosterWorker] = Field(min_length=2)
+    parallel: bool = True
+    comms_enabled: bool = False
+
+
+Harness = Annotated[
+    NullHarness | InspectSweHarness | RosterHarness, Field(discriminator="kind")
+]
 
 HarnessArg = Annotated[
     Harness,
@@ -60,7 +80,9 @@ HarnessArg = Annotated[
     Field(
         description="The harness that runs U: `{kind: 'null'}` for the env as declared, or "
         "`{kind: inspect_swe, agent: <name>, version: <stable|latest|semver>, args: {...}}` for "
-        "a real coding agent, whose agent white must allow."
+        "a real coding agent, whose agent white must allow, or "
+        "`{kind: roster, workers: [{agent_id, main_task_id, user, max_steps?}, ...]}` "
+        "for several agents sharing one sample."
     ),
 ]
 

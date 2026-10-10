@@ -190,6 +190,27 @@ class Blue(ModelAPI):
 
         async def draw(n: int) -> list[ChatMessageAssistant]:
             outputs = await self.u.draw(input, tools, tool_choice, config, n)
+            if self.game.agent_id is not None:
+                scoped = []
+                for output in outputs:
+                    message = output.message
+                    if message.tool_calls:
+                        message = message.model_copy(
+                            update={
+                                "tool_calls": [
+                                    replace(call, id=f"{self.game.agent_id}:{call.id}")
+                                    for call in message.tool_calls
+                                ]
+                            }
+                        )
+                        choice = output.choices[0].model_copy(
+                            update={"message": message}
+                        )
+                        output = output.model_copy(
+                            update={"choices": [choice, *output.choices[1:]]}
+                        )
+                    scoped.append(output)
+                outputs = scoped
             drafts.extend(outputs)
             return [o.message for o in outputs]
 
@@ -337,9 +358,11 @@ class Game:
         white: "White",
         protocol: Protocol,
         tools: "SampleTools",
+        agent_id: str | None = None,
     ) -> None:
         harness = protocol.harness
         self.meta: SampleMetadata = SampleMetadata.model_validate(state.metadata)
+        self.agent_id = agent_id
         self.history: History = History(
             state=state,
             tools=tools.tools,
@@ -366,6 +389,7 @@ class Game:
         self.untrusted: Untrusted = untrusted
         self.white: White = white
         self.protocol: Protocol = protocol
+        self.final_conversation: list[ChatMessage] = []
 
     def block(self, call: ToolCall, reason: str) -> ToolCall:
         """Redirect a call to the engine's `blocked` tool, keeping its id so the deployment answers
@@ -419,7 +443,12 @@ class Game:
         """One step: its span and its index as a fact, and the step the controller tags side args with."""
         self.untrusted.ct_step = index
         async with span(name=f"step {index}", type=STEP_SPAN):
-            self.history.note({"step": index})
+            self.history.note(
+                {
+                    "step": index,
+                    **({"agent_id": self.agent_id} if self.agent_id else {}),
+                }
+            )
             yield
 
     async def run(self) -> TaskState:
@@ -431,8 +460,10 @@ class Game:
         harness = self.protocol.harness
         if isinstance(harness, NullHarness):
             await self._drive_null(seat)
-        else:
+        elif isinstance(harness, InspectSweHarness):
             await self._drive_sandbox(seat, harness)
+        else:
+            raise RuntimeError("roster harness must be driven by the eval solver")
         return self.finalize()
 
     async def _drive_null(self, seat: Seat) -> None:
@@ -469,6 +500,7 @@ class Game:
                     self.finish("no_progress")
             if self.done:
                 break
+        self.final_conversation = conversation
 
     async def _drive_sandbox(self, seat: Seat, harness: InspectSweHarness) -> None:
         """An inspect_swe agent drives its own loop in the sandbox; blue is its bridge `filter`, and

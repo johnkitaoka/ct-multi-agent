@@ -259,12 +259,13 @@ def build_sample_tools(
     scorer_timeout: int = DEFAULT_SCORER_TIMEOUT,
     text_editor_config: Literal["default", "split", "both"] = "default",
     include_python: bool = False,
+    user: str | None = None,
 ) -> SampleTools:
     """Every tool a sample's environment and tasks declare, built once."""
     metadata = SampleMetadata.model_validate(state.metadata)
     environment = get_environment(metadata.environment.id)
     base_tools = env_base_tools(environment)
-    user = env_agent_user(environment)
+    user = user or env_agent_user(environment)
     timeout = tool_timeout or DEFAULT_TOOL_TIMEOUT
 
     bash_tool = bash_with_timeout(user=user, default_timeout=timeout)

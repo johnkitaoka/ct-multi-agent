@@ -71,6 +71,10 @@ def multi_agent_solver(args: MultiAgentArgs) -> Solver:
         model = args.model.make_model("untrusted")
         runs: list[AgentRun] = []
         for config in args.agents:
+            if config.user and config.tool_group:
+                raise ValidationError(
+                    "agent user cannot constrain a custom tool_group; configure its tools directly"
+                )
             if config.main_task_id is not None and config.main_task_id not in mains:
                 raise ValidationError(
                     f"Unknown assigned main task: {config.main_task_id}"
@@ -105,6 +109,7 @@ def multi_agent_solver(args: MultiAgentArgs) -> Solver:
                 tool_timeout=args.tool_timeout,
                 scorer_timeout=args.scorer_timeout,
                 text_editor_config="split",
+                user=config.user,
             )
             tools = (
                 build_tool_group(config.tool_group)

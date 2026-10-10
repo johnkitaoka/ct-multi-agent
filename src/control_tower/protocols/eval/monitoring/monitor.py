@@ -207,8 +207,7 @@ async def score_all(
 
 def entry(score: Score, *, message_id: str | None) -> dict[str, Any]:
     """One sample-store entry, holding only what the metrics read: the message `score` judged,
-    None for a trajectory score, its `monitor` and `draw`, its value, and for an unscored one why,
-    with the `attempts` it gave up after."""
+    None for a trajectory score, its `monitor`, `draw`, value, explanation, and failure attempts."""
     metadata = score.metadata or {}
     scored = isinstance(score.value, int | float) and not isinstance(score.value, bool)
     return {
@@ -216,11 +215,11 @@ def entry(score: Score, *, message_id: str | None) -> dict[str, Any]:
         "monitor": metadata["monitor"],
         "draw": metadata["draw"],
         "value": score.value,
+        **({"explanation": score.explanation} if score.explanation is not None else {}),
         **(
             {}
             if scored
             else {
-                "explanation": score.explanation,
                 **({ATTEMPTS: metadata[ATTEMPTS]} if ATTEMPTS in metadata else {}),
             }
         ),
@@ -229,7 +228,7 @@ def entry(score: Score, *, message_id: str | None) -> dict[str, Any]:
 
 def monitor_score(items: Sequence[dict[str, Any]], ran: Sequence[str | None]) -> Score:
     """The sample's `monitor` score: every entry's value keyed as `verdicts` reads it, an executed
-    action by its index in `ran`, and an unscored entry's reason in metadata under the same key."""
+    action by its index in `ran`, and each explanation in metadata under the same key."""
     index = {message_id: i for i, message_id in enumerate(ran)}
     value: dict[str, float | str] = {}
     reasons: dict[str, dict[str, Any]] = {}
@@ -246,8 +245,13 @@ def monitor_score(items: Sequence[dict[str, Any]], ran: Sequence[str | None]) ->
             value[key] = float(score)
         else:
             value[key] = UNSCORED
+        if "explanation" in item or ATTEMPTS in item:
             reasons[key] = {
-                "explanation": item.get("explanation"),
+                **(
+                    {"explanation": item["explanation"]}
+                    if "explanation" in item
+                    else {}
+                ),
                 **({ATTEMPTS: item[ATTEMPTS]} if ATTEMPTS in item else {}),
             }
     return Score(value=value, metadata=reasons)
@@ -265,10 +269,14 @@ def entries(recorded: Score, ran: Sequence[str | None]) -> list[dict[str, Any]]:
                 "draw": v.draw,
                 "value": v.score.value,
                 **(
+                    {"explanation": v.score.explanation}
+                    if v.score.explanation is not None
+                    else {}
+                ),
+                **(
                     {}
                     if v.score.value != UNSCORED
                     else {
-                        "explanation": v.score.explanation,
                         **({ATTEMPTS: meta[ATTEMPTS]} if ATTEMPTS in meta else {}),
                     }
                 ),

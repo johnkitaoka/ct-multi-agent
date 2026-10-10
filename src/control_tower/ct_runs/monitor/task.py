@@ -31,6 +31,7 @@ from control_tower.protocols.eval.monitoring.monitor import (
 )
 from control_tower.protocols.eval.monitoring.posthoc import (
     Kind,
+    View,
     monitor_scorer,
     score_from_scan,
 )
@@ -43,6 +44,7 @@ def run_eval_monitor(
     *,
     monitors: Monitors,
     kind: Kind,
+    view: View = "standard",
     model_roles: dict[str, str | dict[str, Any]],
     save_dir: Path | None = None,
     scan: Callable[[], Path] | None = None,
@@ -61,6 +63,13 @@ def run_eval_monitor(
     if resolved is None:
         raise ValidationError(f"{source} is not an eval log or a run backed by one")
     log, source_name = resolved
+    if view != "standard":
+        if kind != "trajectory" or scan is not None:
+            raise ValidationError("team monitor views require local trajectory scoring")
+        if any(
+            not (sample.metadata or {}).get("agent_ids") for sample in log.samples or []
+        ):
+            raise ValidationError("team monitor views require a roster eval log")
     carrier = source
     # Only a seated run records `eval_version`, whether it ran locally, on the fleet or on hawk.
     if "eval_version" not in (log.eval.metadata or {}):
@@ -91,8 +100,21 @@ def run_eval_monitor(
     # The run's `monitor` score moves into the store, so this pass reports it and the new scores
     # as one; `append` would otherwise write the new one beside it as `monitor1`.
     copy = log.model_copy(deep=True)
-    asked = {monitor.name for monitor in monitors}
     for sample in copy.samples or []:
+        scopes = (
+            (sample.metadata or {}).get("agent_ids", [])
+            if view == "per-agent"
+            else ["joint"]
+        )
+        asked = (
+            {
+                f"{monitor.name}@{agent_id}"
+                for monitor in monitors
+                for agent_id in scopes
+            }
+            if view != "standard"
+            else {monitor.name for monitor in monitors}
+        )
         scores = dict(sample.scores or {})
         if (recorded := scores.pop(MONITOR_SCORE, None)) is not None:
             ran = [event.output.message.id for event, _ in action_views(sample.events)]
@@ -114,7 +136,7 @@ def run_eval_monitor(
     monitored = (
         score(
             copy,
-            monitor_scorer(monitors=monitors, kind=kind),
+            monitor_scorer(monitors=monitors, kind=kind, view=view),
             model_roles={
                 role: make_role_model(model, role=role)
                 for role, model in model_roles.items()

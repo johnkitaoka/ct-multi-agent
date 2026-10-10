@@ -18,6 +18,7 @@ class AgentConfig(BaseModelPython):
     role: str = ""
     max_steps: int | None = Field(default=None, ge=1)
     main_task_id: str | None = None
+    user: str | None = None
     tool_group: str | None = None
     instructions: str = ""
     side_instructions: str = ""

@@ -255,6 +255,8 @@ def _harness_spec(kind: str | None, args: tuple[str, ...]) -> Harness | None:
         }
         if "args" in spec:
             spec["args"] = json.loads(spec["args"])
+        if "workers" in spec:
+            spec["workers"] = json.loads(spec["workers"])
         return TypeAdapter(Harness).validate_python(spec)
     except (PydanticValidationError, json.JSONDecodeError) as error:
         raise click.UsageError(f"Invalid --harness-arg: {error}") from error
@@ -295,10 +297,10 @@ def _shared_options(
         click.option(
             "--harness",
             "harness_kind",
-            type=click.Choice(["null", "inspect_swe"]),
+            type=click.Choice(["null", "inspect_swe", "roster"]),
             default=None,
-            help="The protocol's harness: `null` (the env as declared, the default) or `inspect_swe` "
-            "(a coding agent).",
+            help="The protocol's harness: `null` (the env as declared, the default), `inspect_swe` "
+            "(a coding agent), or `roster` (several agents in one sample).",
         ),
         click.option(
             "-ha",
@@ -308,7 +310,7 @@ def _shared_options(
             type=str,
             help="Harness args in key=value format (multiple allowed). inspect_swe requires both: "
             "agent (e.g. claude_code) and version (stable, latest, or a semver); args takes the agent's "
-            'own keyword arguments as JSON, e.g. args={"permission_mode": "acceptEdits"}.',
+            'own keyword arguments as JSON, e.g. args={"permission_mode": "acceptEdits"}; roster requires workers as JSON and accepts parallel and comms_enabled.',
         ),
         click.option(
             "-wa",

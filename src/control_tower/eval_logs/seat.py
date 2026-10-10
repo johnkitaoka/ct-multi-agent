@@ -9,7 +9,7 @@ here rather than each deriving the filter.
 from collections.abc import Iterable
 from typing import cast
 
-from inspect_ai.event import Event, ModelEvent, ToolEvent
+from inspect_ai.event import Event, ModelEvent, SpanBeginEvent, ToolEvent
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
@@ -39,6 +39,51 @@ def seat_turns(events: Iterable[Event]) -> list[ModelEvent]:
         and event.model.startswith(f"{SEAT_PROVIDER}/")
         and event.output.choices
     ]
+
+
+def roster_events(
+    events: Iterable[Event], agent_ids: Iterable[str]
+) -> list[tuple[str, ModelEvent | ToolEvent]]:
+    """The roster's seated actions and results in their recorded global order."""
+    events = list(events)
+    names = set(agent_ids)
+    spans = {event.id: event for event in events if isinstance(event, SpanBeginEvent)}
+    turns = seat_turns(events)
+    seated = {id(event) for event in turns}
+
+    def owner(span_id: str | None) -> str | None:
+        while span_id is not None and (span := spans.get(span_id)) is not None:
+            if span.type == "agent" and span.name in names:
+                return span.name
+            span_id = span.parent_id
+        return None
+
+    calls = {
+        call.id: (owner(event.span_id), call.function)
+        for event in turns
+        for call in event.output.message.tool_calls or []
+    }
+
+    ordered: list[tuple[str, ModelEvent | ToolEvent]] = []
+    for event in events:
+        if not (
+            isinstance(event, ModelEvent)
+            and id(event) in seated
+            or isinstance(event, ToolEvent)
+            and event.id in calls
+        ):
+            continue
+        agent_id = owner(event.span_id)
+        if isinstance(event, ToolEvent) and calls[event.id] != (
+            agent_id,
+            event.function,
+        ):
+            continue
+        if agent_id is not None:
+            ordered.append((agent_id, event))
+        elif id(event) in seated:
+            raise ValueError("a roster seat turn has no worker span")
+    return ordered
 
 
 def _ran(events: "list[Event]") -> dict[str, ToolEvent]:
