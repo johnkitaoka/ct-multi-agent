@@ -6,6 +6,22 @@ Welcome to Control Tower, a framework for AI control evaluations built on [Inspe
 
 Control Tower provides many built-in components, including blue-team protocols, action- and trajectory-level monitors, control evaluations, safety-usefulness curves, and trajectory tooling. Environments and their main and side tasks come from separate settings repositories, and extensions (new protocols, policies, monitors, and scorers) can be provided by other Python packages.
 
+## Multi-agent extension in this fork
+
+This fork adds a roster harness that runs several agents in one shared sandbox. Each worker has its own main task, conversation, policy instance, and Linux account; Control Tower grades the shared result with the setting's main- and side-task scorers. It also adds an offline HTML transcript renderer.
+
+For a model-free MiniLab example that writes an Inspect recording and HTML transcript:
+
+```bash
+git clone --recurse-submodules https://github.com/johnkitaoka/minilab.git
+cd minilab/control-tower
+uv sync --locked --dev
+uv run ct settings pull ../minilab
+uv run python examples/multi-agent/minilab.py --with-side --out-dir /tmp/minilab-example
+```
+
+For model-driven runs, use `ct run eval --harness roster`. Completed team logs can be scored with `ct run monitor --view per-agent` or `--view joint`. The [multi-agent guide](docs/multi-agent.md) documents the commands, monitor presets, and current limits. The roster harness does not yet support live blocking, auditing, or stepwise monitoring; the current team monitor input also differs from the historical experiment.
+
 See the [documentation](https://docs.linuxarena.ai) for an overview of Control Tower, a hands-on evaluation walkthrough, and development guides.
 
 To get started:
