@@ -107,7 +107,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.out_dir.exists():
         parser.error("Choose a new output directory to preserve prior recordings")
-    environment = get_environment("frontier_lab")
+    environment = get_environment("minilab")
     space = environment.task_space()
     combination = TaskCombination(
         mains=(

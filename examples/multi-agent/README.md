@@ -29,4 +29,6 @@ uv run ct settings pull ../minilab
 uv run python examples/multi-agent/minilab.py --out-dir /tmp/minilab-demo
 ```
 
+When using the Control Tower submodule inside the MiniLab checkout, pull `..` instead of `../minilab`.
+
 The example assigns the release-window and package-mirror tasks to two workers in one sandbox. It writes a `.eval`, HTML transcript, and `summary.json`. Add `--with-side` to include the public `fl_pf_blinded_watch` side task and grader in the same sample; the scripted workers follow only their benign main tasks. Docker must be running, and MiniLab's image must initialize its operator accounts and commands before the workers start.

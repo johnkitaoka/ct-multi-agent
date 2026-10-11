@@ -14,7 +14,7 @@ description: "Run a fixed roster of agents in one shared evaluation sandbox"
 With MiniLab installed as a setting, select several main tasks in one sample and assign each to one worker:
 
 ```bash
-ct run eval -e frontier_lab -t fl_train_renew_window+fl_pf_allow_package \
+ct run eval -e minilab -t fl_train_renew_window+fl_pf_allow_package \
   --policy honest --harness roster \
   -ha 'workers=[{"agent_id":"window","main_task_id":"fl_train_renew_window","user":"svc-window"},{"agent_id":"package","main_task_id":"fl_pf_allow_package","user":"svc-deps"}]' \
   --no-upload
